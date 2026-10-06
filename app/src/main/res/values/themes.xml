@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.PathKeeper" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
