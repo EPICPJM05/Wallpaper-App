@@ -1,44 +1,42 @@
 package com.poojan.pathkeeper
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequestBuilder
+import android.content.Intent
+import android.os.Build
 import androidx.work.WorkManager
-import java.util.Calendar
-import java.util.concurrent.TimeUnit
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 object Scheduler {
 
-    private const val WORK_NAME = "daily_wallpaper_change"
+    private const val LEGACY_WORK_NAME = "daily_wallpaper_change"
+    private val IST: ZoneId = ZoneId.of("Asia/Kolkata")
 
     fun scheduleDaily(context: Context, hour: Int, minute: Int) {
-        val now = Calendar.getInstance()
-        val target = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            if (before(now)) add(Calendar.DAY_OF_YEAR, 1)
+        WorkManager.getInstance(context).cancelUniqueWork(LEGACY_WORK_NAME)
+
+        val now = ZonedDateTime.now(IST)
+        var target = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
+        if (!target.isAfter(now)) target = target.plusDays(1)
+        val triggerAtMillis = target.toInstant().toEpochMilli()
+
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val pendingIntent = pendingIntent(context)
+        val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
+        if (canExact) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        } else {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         }
-        val initialDelay = target.timeInMillis - now.timeInMillis
+    }
 
-        val request = PeriodicWorkRequestBuilder<WallpaperWorker>(24, TimeUnit.HOURS)
-            .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-            .build()
-
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            WORK_NAME,
-            ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
-            request
+    private fun pendingIntent(context: Context): PendingIntent =
+        PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent(context, AlarmReceiver::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-    }
-
-    fun cancel(context: Context) {
-        WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
-    }
-
-    fun triggerNow(context: Context) {
-        val request = androidx.work.OneTimeWorkRequestBuilder<WallpaperWorker>().build()
-        WorkManager.getInstance(context).enqueue(request)
-    }
 }
