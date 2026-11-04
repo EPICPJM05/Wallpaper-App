@@ -88,6 +88,12 @@ fun PathKeeperScreen(repo: PrefsRepository) {
         value = currentUri?.let { loadPreview(context, Uri.parse(it)) }
     }
 
+    LaunchedEffect(folderUri, currentUri) {
+        withContext(Dispatchers.IO) {
+            WallpaperChanger.refreshIfCurrentImageWasRemoved(context.applicationContext, repo)
+        }
+    }
+
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         if (uri != null) {
             context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
