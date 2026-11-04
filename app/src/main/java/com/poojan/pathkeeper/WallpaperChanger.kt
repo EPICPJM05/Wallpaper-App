@@ -4,6 +4,7 @@ import android.app.WallpaperManager
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import androidx.core.net.toUri
 
 object WallpaperChanger {
 
@@ -50,7 +51,7 @@ object WallpaperChanger {
 
     suspend fun changeNow(context: Context, repo: PrefsRepository): String {
         val folder = repo.getFolderUri() ?: return "Pick a folder first."
-        val images = listImageUris(context, Uri.parse(folder))
+        val images = listImageUris(context, folder.toUri())
         if (images.isEmpty()) return "No images found in the folder."
         val chosen = pickRandom(images, repo.getRecentUris()) ?: return "No images found."
         if (!applyWallpaper(context, chosen)) return "Failed to set wallpaper: $lastError"
