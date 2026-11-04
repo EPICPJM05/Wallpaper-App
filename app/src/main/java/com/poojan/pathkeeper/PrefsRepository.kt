@@ -49,20 +49,6 @@ class PrefsRepository(private val context: Context) {
         return context.dataStore.data.first()[Keys.FOLDER_URI]
     }
 
-    suspend fun getCurrentWallpaperUri(): String? {
-        return context.dataStore.data.first()[Keys.CURRENT_URI]
-    }
-
-    suspend fun clearCurrentWallpaperUri() {
-        context.dataStore.edit { prefs ->
-            val current = prefs[Keys.CURRENT_URI]
-            prefs.remove(Keys.CURRENT_URI)
-            if (current != null) {
-                prefs[Keys.RECENT_URIS] = (prefs[Keys.RECENT_URIS] ?: emptySet()) - current
-            }
-        }
-    }
-
     suspend fun getScheduleHour(): Int {
         return context.dataStore.data.first()[Keys.HOUR] ?: 6
     }

@@ -17,7 +17,7 @@ object WallpaperChanger {
         if (!tree.isDirectory) return emptyList()
         return tree.listFiles()
             .filter { file ->
-                file.isFile && (file.type?.let { type -> IMAGE_MIME_PREFIXES.any { type.startsWith(it) } } ?: false)
+            file.isFile && (file.type?.let { type -> IMAGE_MIME_PREFIXES.any { type.startsWith(it) } } ?: false)
             }
             .mapNotNull { it.uri }
     }
@@ -31,7 +31,6 @@ object WallpaperChanger {
         val pool = if (candidates.isEmpty()) images else candidates
         return pool.random()
     }
-
     var lastError: String? = null
 
     fun applyWallpaper(context: Context, imageUri: Uri): Boolean {
@@ -52,30 +51,10 @@ object WallpaperChanger {
     suspend fun changeNow(context: Context, repo: PrefsRepository): String {
         val folder = repo.getFolderUri() ?: return "Pick a folder first."
         val images = listImageUris(context, Uri.parse(folder))
-        val current = repo.getCurrentWallpaperUri()
-        if (current != null && images.none { it.toString() == current }) {
-            // Android keeps the last applied wallpaper even after its source file is deleted.
-            // Drop the stale URI so the app preview cannot keep pointing at it.
-            repo.clearCurrentWallpaperUri()
-        }
         if (images.isEmpty()) return "No images found in the folder."
         val chosen = pickRandom(images, repo.getRecentUris()) ?: return "No images found."
         if (!applyWallpaper(context, chosen)) return "Failed to set wallpaper: $lastError"
         repo.recordShown(chosen.toString())
         return "Wallpaper changed."
-    }
-
-    /** Reconcile the saved preview with the selected folder when the app is opened. */
-    suspend fun refreshIfCurrentImageWasRemoved(context: Context, repo: PrefsRepository) {
-        val current = repo.getCurrentWallpaperUri() ?: return
-        val folder = repo.getFolderUri() ?: run {
-            repo.clearCurrentWallpaperUri()
-            return
-        }
-        val images = listImageUris(context, Uri.parse(folder))
-        if (images.none { it.toString() == current }) {
-            repo.clearCurrentWallpaperUri()
-            if (images.isNotEmpty()) changeNow(context, repo)
-        }
     }
 }
